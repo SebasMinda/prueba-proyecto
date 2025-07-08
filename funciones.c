@@ -651,10 +651,26 @@ void reiniciar_programa() {
 int leer_fecha(const char *mensaje, char *fecha_str) {
     int dia, mes, anio;
     printf("%s\n", mensaje);
-    if (!leer_int("Año (ej. 2024): ", 2000, 2050, &anio)) return 0;
+
+    if (!leer_int("Anio (ej. 2024): ", 2000, 2050, &anio)) return 0;
     if (!leer_int("Mes (1-12): ", 1, 12, &mes)) return 0;
-    // Validación simple de día, no considera meses de 30/28/29 días
-    if (!leer_int("Día (1-31): ", 1, 31, &dia)) return 0;
+
+    int max_dias = 31;
+    if (mes == 4 || mes == 6 || mes == 9 || mes == 11) {
+        max_dias = 30;
+    } else if (mes == 2) {
+        // Comprobar si es año bisiesto
+        if ((anio % 4 == 0 && anio % 100 != 0) || (anio % 400 == 0)) {
+            max_dias = 29; // Año bisiesto
+        } else {
+            max_dias = 28; // Año no bisiesto
+        }
+    }
+
+    char mensaje_dia[50];
+    sprintf(mensaje_dia, "Dia (1-%d): ", max_dias);
+
+    if (!leer_int(mensaje_dia, 1, max_dias, &dia)) return 0;
 
     // Formatea la fecha en la cadena de salida
     sprintf(fecha_str, "%04d-%02d-%02d", anio, mes, dia);
