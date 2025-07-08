@@ -21,8 +21,6 @@ int cargar_zonas(Zona zonas[], int *num_zonas) {
         // Leer nombre de zona
         if (!fgets(zonas[i].nombre, NOMBRE_ZONA, f)) { fclose(f); return 0; }
         zonas[i].nombre[strcspn(zonas[i].nombre, "\n")] = '\0';
-        // Leer latitud y longitud
-        if (fscanf(f, "%f %f\n", &zonas[i].latitud, &zonas[i].longitud) != 2) { fclose(f); return 0; }
         // Leer días registrados
         int dias;
         if (fscanf(f, "%d\n", &dias) != 1) { fclose(f); return 0; }
@@ -49,7 +47,6 @@ int guardar_zonas(Zona zonas[], int num_zonas) {
     fprintf(f, "%d\n", num_zonas);
     for (int i = 0; i < num_zonas; i++) {
         fprintf(f, "%s\n", zonas[i].nombre);
-        fprintf(f, "%.4f %.4f\n", zonas[i].latitud, zonas[i].longitud);
         fprintf(f, "%d\n", zonas[i].dias_registrados);
         for (int j = 0; j < zonas[i].dias_registrados; j++) {
             RegistroDia *r = &zonas[i].historial[j];
@@ -180,8 +177,6 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     printf("Nombre de la nueva zona: ");
     fgets(zonas[*num_zonas].nombre, NOMBRE_ZONA, stdin);
     zonas[*num_zonas].nombre[strcspn(zonas[*num_zonas].nombre, "\n")] = 0;
-    leer_float("Latitud de la zona: ", -90, 90, &zonas[*num_zonas].latitud);
-    leer_float("Longitud de la zona: ", -180, 180, &zonas[*num_zonas].longitud);
     zonas[*num_zonas].dias_registrados = 0;
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
@@ -201,10 +196,9 @@ void editar_zona(Zona zonas[], int num_zonas) {
     do {
         printf("\n--- Editando Zona: %s ---\n", z->nombre);
         printf("1. Editar Nombre\n");
-        printf("2. Editar Coordenadas\n");
-        printf("3. Editar datos de un dia\n");
+        printf("2. Editar datos de un dia\n");
         printf("0. Volver al menu principal\n");
-        if (!leer_int("Opcion: ", 0, 3, &op_edit)) continue;
+        if (!leer_int("Opcion: ", 0, 2, &op_edit)) continue;
 
         switch (op_edit) {
             case 1: {
@@ -219,12 +213,6 @@ void editar_zona(Zona zonas[], int num_zonas) {
                 break;
             }
             case 2: {
-                leer_float("Nueva latitud: ", -90.0, 90.0, &z->latitud);
-                leer_float("Nueva longitud: ", -180.0, 180.0, &z->longitud);
-                printf("Coordenadas actualizadas.\n");
-                break;
-            }
-            case 3: {
                 if (z->dias_registrados == 0) {
                     printf("No hay datos historicos para editar.\n");
                     break;
@@ -321,30 +309,51 @@ void mostrar_info_zonas(Zona zonas[], int num_zonas) {
 void generar_alertas_y_recomendaciones(Zona zonas[], int num_zonas) {
     printf("\nALERTAS Y RECOMENDACIONES DEL SISTEMA:\n");
     int alertas_generadas = 0;
+
     for (int i = 0; i < num_zonas; i++) {
         if (zonas[i].dias_registrados == 0) continue;
 
         RegistroDia *r = &zonas[i].historial[zonas[i].dias_registrados - 1];
-        int alerta = 0;
-        char contaminantes[256] = "";
+        int alerta_zona = 0;
 
-        if (r->pm25 > 25) { strcat(contaminantes, "PM2.5, "); alerta = 1; }
-        if (r->pm10 > 50) { strcat(contaminantes, "PM10, "); alerta = 1; }
-        if (r->co2 > 1000) { strcat(contaminantes, "CO2, "); alerta = 1; }
-        if (r->so2 > 20) { strcat(contaminantes, "SO2, "); alerta = 1; }
-        if (r->no2 > 40) { strcat(contaminantes, "NO2, "); alerta = 1; }
+        // Buffer para acumular los mensajes de alerta de la zona
+        char mensaje_alerta[1024] = "";
 
-        if (alerta) {
+        if (r->pm25 > 25 || r->pm10 > 50) {
+            alerta_zona = 1;
+            strcat(mensaje_alerta, "  -> ALERTA: Niveles altos de material particulado (PM2.5/PM10).\n");
+            strcat(mensaje_alerta, "     - RECOMENDACIONES:\n");
+            strcat(mensaje_alerta, "       - Evitar actividad fisica intensa al aire libre.\n");
+            strcat(mensaje_alerta, "       - Grupos vulnerables (niños, ancianos, personas con asma) deben permanecer en interiores.\n");
+            strcat(mensaje_alerta, "       - Usar mascarillas N95 si es necesario salir.\n\n");
+        }
+        if (r->co2 > 1000) {
+            alerta_zona = 1;
+            strcat(mensaje_alerta, "  -> ALERTA: Niveles altos de Dioxido de Carbono (CO2).\n");
+            strcat(mensaje_alerta, "     - RECOMENDACIONES:\n");
+            strcat(mensaje_alerta, "       - Asegurar buena ventilacion en espacios cerrados.\n");
+            strcat(mensaje_alerta, "       - Reducir el uso de vehiculos a combustion en la zona.\n\n");
+        }
+        if (r->so2 > 20) {
+            alerta_zona = 1;
+            strcat(mensaje_alerta, "  -> ALERTA: Niveles altos de Dioxido de Azufre (SO2).\n");
+            strcat(mensaje_alerta, "     - RECOMENDACIONES:\n");
+            strcat(mensaje_alerta, "       - Personas con asma deben tener especial cuidado y evitar la exposicion.\n");
+            strcat(mensaje_alerta, "       - Limitar la exposicion en areas industriales o de alto trafico.\n\n");
+        }
+        if (r->no2 > 40) {
+            alerta_zona = 1;
+            strcat(mensaje_alerta, "  -> ALERTA: Niveles altos de Dioxido de Nitrogeno (NO2).\n");
+            strcat(mensaje_alerta, "     - RECOMENDACIONES:\n");
+            strcat(mensaje_alerta, "       - Reducir el uso de vehiculos, especialmente diesel.\n");
+            strcat(mensaje_alerta, "       - Evitar la quema de combustibles fosiles.\n\n");
+        }
+
+        if (alerta_zona) {
             alertas_generadas = 1;
-            contaminantes[strlen(contaminantes) - 2] = '\0';
             printf("\n------------------------------------------------------------\n");
             printf("ALERTA EN ZONA: %s\n", zonas[i].nombre);
-            printf("  -> Niveles altos de: %s.\n", contaminantes);
-            printf("  -> RECOMENDACIONES:\n");
-            printf("     - Reducir el uso de vehiculos privados y fomentar el transporte publico.\n");
-            printf("     - Evitar la quema de basura, hojas secas y otros materiales.\n");
-            printf("     - Se recomienda a la poblacion vulnerable (ninos, ancianos, personas con enfermedades respiratorias) no exponerse al aire libre.\n");
-            printf("     - Usar mascarilla en exteriores para proteger las vias respiratorias.\n");
+            printf("%s", mensaje_alerta);
         }
     }
 
@@ -382,7 +391,6 @@ void generar_reporte(Zona zonas[], int num_zonas) {
     for (int i = 0; i < num_zonas; i++) {
         Zona *z = &zonas[i];
         fprintf(f, "--- ZONA %d: %s ---\n", i + 1, z->nombre);
-        fprintf(f, "Ubicacion: (%.4f, %.4f)\n", z->latitud, z->longitud);
         fprintf(f, "Registros historicos: %d\n\n", z->dias_registrados);
 
         if (z->dias_registrados > 0) {

@@ -13,10 +13,8 @@ typedef struct {
 
 typedef struct {
     char nombre[NOMBRE_ZONA];
-    float latitud;
-    float longitud;
-    RegistroDia historial[DIAS_HISTORIAL];
     int dias_registrados;
+    RegistroDia historial[DIAS_HISTORIAL];
 } Zona;
 
 int cargar_zonas(Zona zonas[], int *num_zonas);

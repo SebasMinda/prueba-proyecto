@@ -11,15 +11,11 @@ int main() {
     if (!cargar_zonas(zonas, &num_zonas)) {
         printf("No se encontro archivo de datos o el formato es incorrecto. Creando uno nuevo...\n");
         char *nombres[] = {"UDLA Park", "Parque La Carolina", "Mitad del Mundo", "El Panecillo", "Centro Historico"};
-        float latitudes[] = {-0.1760, -0.1795, -0.0022, -0.2204, -0.2200};
-        float longitudes[] = {-78.4880, -78.4850, -78.4559, -78.5250, -78.5120};
         num_zonas = 5;
 
         for (int i = 0; i < num_zonas; i++) {
             strncpy(zonas[i].nombre, nombres[i], NOMBRE_ZONA - 1);
             zonas[i].nombre[NOMBRE_ZONA - 1] = '\0';
-            zonas[i].latitud = latitudes[i];
-            zonas[i].longitud = longitudes[i];
             zonas[i].dias_registrados = DIAS_HISTORIAL;
             for (int j = 0; j < DIAS_HISTORIAL; j++) {
                 RegistroDia *r = &zonas[i].historial[j];
@@ -40,13 +36,10 @@ int main() {
 
     do {
         mostrar_menu();
-        if (!leer_int("", 0, 1000, &opcion)) {
-            limpiar_buffer(); // Limpia si la entrada fue inválida (ej. "abc")
-            continue;
+        if (scanf("%d", &opcion) != 1) {
+            opcion = -1; // Opción inválida para que el bucle continúe
         }
-
-        // Limpia el '\n' que sobra después de leer el número de la opción.
-        limpiar_buffer(); 
+        limpiar_buffer(); // Limpiar el buffer después de cada entrada
 
         switch (opcion) {
             case 1: mostrar_estado_actual(zonas, num_zonas); break;
