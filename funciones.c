@@ -82,7 +82,16 @@ void mostrar_menu() {
     printf("5. Generar alertas del sistema\n");
     printf("6. Generar recomendaciones para una zona\n");
     printf("7. Generar reporte completo\n");
+    printf("8. Exportar copia de respaldo\n");
+    printf("9. Anadir nueva zona de monitoreo\n");
+    printf("10. Editar datos de una zona existente\n");
+    printf("11. Eliminar una zona del sistema\n");
     printf("0. Salir del sistema\n");
+    printf("1000. Reiniciar programa (eliminar todos los datos)\n");
+    printf("============================================================\n");
+    printf("NOTA: Todos los datos se gestionan automaticamente en\n");
+    printf("      formato de texto para mayor portabilidad.\n");
+    printf("      El historial ahora almacena los ultimos 7 dias.\n");
     printf("============================================================\n");
     printf("Seleccione una opcion: ");
 }
@@ -205,14 +214,14 @@ void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
     printf("Ingrese la fecha (YYYY-MM-DD): ");
     fgets(r->fecha, sizeof(r->fecha), stdin);
     r->fecha[strcspn(r->fecha, "\n")] = 0;
-    leer_float("PM2.5: ", 0, 1000, &r->pm25);
-    leer_float("PM10: ", 0, 1000, &r->pm10);
-    leer_float("CO2: ", 0, 10000, &r->co2);
-    leer_float("SO2: ", 0, 1000, &r->so2);
-    leer_float("NO2: ", 0, 1000, &r->no2);
-    leer_float("Temperatura (C): ", -30, 60, &r->temperatura);
+    leer_float("PM2.5: ", 0, 99999, &r->pm25);
+    leer_float("PM10: ", 0, 99999, &r->pm10);
+    leer_float("CO2: ", 0, 99999, &r->co2);
+    leer_float("SO2: ", 0, 99999, &r->so2);
+    leer_float("NO2: ", 0, 99999, &r->no2);
+    leer_float("Temperatura (C): ", -50, 60, &r->temperatura);
     leer_float("Humedad (%%): ", 0, 100, &r->humedad);
-    leer_float("Velocidad viento (km/h): ", 0, 200, &r->velocidad_viento);
+    leer_float("Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
     z->dias_registrados++;
     guardar_zonas(zonas, num_zonas);
     printf("Datos ingresados correctamente.\n");
