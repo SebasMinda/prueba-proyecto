@@ -89,6 +89,10 @@ int leer_int(const char *mensaje, int min, int max, int *valor);
 // Es una función de ayuda muy importante. Si se borra, la lectura de datos puede volverse impredecible.
 void limpiar_buffer();
 
+// Compara dos fechas para la función de ordenamiento qsort.
+// Es una función interna crucial para el ordenamiento cronológico. Si se borra, las funciones de ordenamiento fallarán.
+int comparar_fechas(const void *a, const void *b);
+
 // Lee y valida una fecha (día, mes, año) de forma numérica y la formatea a YYYY-MM-DD.
 // Si se borra, se pierde la capacidad de ingresar fechas de forma validada y segura.
 int leer_fecha(const char *mensaje, char *fecha_str);
