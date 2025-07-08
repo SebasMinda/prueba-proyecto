@@ -1,3 +1,31 @@
+/*
+ * PREGUNTA DE PROFESOR: ¿Por qué se incluyen estas librerías? ¿Qué aporta cada una y qué pasa si las borras?
+ *
+ * RESPUESTA:
+ * - <stdio.h> (Standard Input/Output): Es la más fundamental. Proporciona las funciones para interactuar con la consola y los archivos.
+ *   Ejemplos clave: printf (imprimir), scanf (leer), fopen (abrir archivo), fclose (cerrar), fgets (leer línea de texto), fprintf (escribir en archivo).
+ *   Si se borra, el programa sería mudo y ciego: no podría mostrar nada en pantalla ni leer o escribir en los archivos de datos.
+ *
+ * - <stdlib.h> (Standard Library): Ofrece funciones de utilidad general, especialmente para conversión de tipos y memoria.
+ *   Ejemplos clave: strtof/strtol (convertir texto a número), rand (generar números aleatorios para los datos de ejemplo), exit.
+ *   Si se borra, nuestras funciones de lectura segura (`leer_float`, `leer_int`) fallarían y no podríamos generar datos iniciales.
+ *
+ * - <string.h> (String Handling): Contiene funciones para manipular cadenas de caracteres (arrays de char).
+ *   Ejemplos clave: strcpy/strncpy (copiar texto), strcat (concatenar texto), strlen (obtener longitud), strcspn (buscar un caracter en un texto).
+ *   Si se borra, no podríamos manejar los nombres de las zonas, las fechas, ni construir los mensajes de alerta.
+ *
+ * - <ctype.h> (Character Type): Proporciona funciones para clasificar y convertir caracteres (ej: isdigit, isalpha, toupper).
+ *   Aunque no se usa activamente en la versión final, es muy útil para validaciones de entrada más complejas.
+ *
+ * - <time.h> (Time Handling): Permite trabajar con las fechas y horas del sistema.
+ *   Ejemplos clave: time (obtener el tiempo actual), localtime (convertir a una estructura de tiempo local), strftime (formatear fecha/hora a texto).
+ *   Si se borra, la función `generar_reporte` no podría mostrar la fecha y hora en la que se creó el informe.
+ *
+ * - "funciones.h": Este es nuestro propio archivo de cabecera. Se incluye con comillas dobles ("") porque es un archivo local
+ *   del proyecto, a diferencia de las librerías del sistema que usan paréntesis angulares (<>).
+ *   Contiene las definiciones de nuestras estructuras (`Zona`, `RegistroDia`) y los prototipos de todas nuestras funciones.
+ *   Si se borra, `main.c` y `funciones.c` no sabrían qué es una `Zona` o qué funciones existen, y el programa no compilaría.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
