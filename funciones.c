@@ -59,6 +59,12 @@ int guardar_zonas(Zona zonas[], int num_zonas) {
     return 1;
 }
 
+int comparar_fechas(const void *a, const void *b) {
+    RegistroDia *regA = (RegistroDia *)a;
+    RegistroDia *regB = (RegistroDia *)b;
+    return strcmp(regA->fecha, regB->fecha);
+}
+
 void mostrar_menu() {
     printf("\n============================================================\n");
     printf("    SISTEMA INTEGRAL DE GESTION DE CONTAMINACION DEL AIRE\n");
@@ -318,6 +324,8 @@ void editar_zona(Zona zonas[], int num_zonas) {
                 r->fecha[strcspn(r->fecha, "\n")] = 0;
                 if (strlen(r->fecha) > 0) {
                     printf("Fecha del registro actualizada de %s a %s.\n", fecha_anterior, r->fecha);
+                    qsort(z->historial, z->dias_registrados, sizeof(RegistroDia), comparar_fechas);
+                    printf("El historial de la zona ha sido reordenado cronologicamente.\n");
                 } else {
                     // Si el usuario no ingresa nada, restauramos la fecha original
                     strcpy(r->fecha, fecha_anterior);
