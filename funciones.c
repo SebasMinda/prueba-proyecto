@@ -181,11 +181,23 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     fgets(nueva_zona->nombre, NOMBRE_ZONA, stdin);
     nueva_zona->nombre[strcspn(nueva_zona->nombre, "\n")] = 0;
 
-    // Se añaden 4 días de datos de ejemplo para que las predicciones funcionen
-    nueva_zona->dias_registrados = 4;
-    for (int i = 0; i < 4; i++) {
+    int dias_a_generar;
+    if (!leer_int("\nCuantos dias de datos de ejemplo desea generar (1-7)?\n(Se recomiendan al menos 3 para que las predicciones funcionen): ", 1, 7, &dias_a_generar)) {
+        printf("Operacion cancelada.\n");
+        return;
+    }
+
+    // Se añaden los días de datos de ejemplo solicitados
+    nueva_zona->dias_registrados = dias_a_generar;
+    for (int i = 0; i < dias_a_generar; i++) {
         RegistroDia *r = &nueva_zona->historial[i];
-        sprintf(r->fecha, "2025-07-%02d", i + 1); // Fechas de ejemplo
+        // Usamos la fecha actual del sistema para generar fechas más realistas hacia atrás
+        time_t t = time(NULL);
+        struct tm *tm_info = localtime(&t);
+        tm_info->tm_mday -= (dias_a_generar - 1 - i); // Restamos días para ir hacia el pasado
+        mktime(tm_info); // Normalizamos la fecha
+        strftime(r->fecha, sizeof(r->fecha), "%Y-%m-%d", tm_info);
+
         r->pm25 = 15.0f + (rand() % 200) / 10.0f;
         r->pm10 = 25.0f + (rand() % 300) / 10.0f;
         r->co2 = 400.0f + (rand() % 2000) / 10.0f;
@@ -198,8 +210,10 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
 
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
-    printf("\nZona agregada correctamente con 4 dias de datos de ejemplo.\n");
-    printf("Ya puede utilizar la funcion de prediccion para esta zona.\n");
+    printf("\nZona agregada correctamente con %d dias de datos de ejemplo.\n", dias_a_generar);
+    if (dias_a_generar >= 3) {
+        printf("Ya puede utilizar la funcion de prediccion para esta zona.\n");
+    }
 }
 
 void editar_zona(Zona zonas[], int num_zonas) {
