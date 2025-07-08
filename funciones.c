@@ -311,17 +311,32 @@ void mostrar_predicciones(Zona zonas[], int num_zonas) {
 }
 
 void mostrar_info_zonas(Zona zonas[], int num_zonas) {
-    printf("\nINFORMACION DE ZONAS MONITOREADAS:\n");
+    if (num_zonas == 0) {
+        printf("\nNo hay zonas registradas para mostrar.\n");
+        return;
+    }
+
+    int op;
+    printf("\nSeleccione la zona para ver su informacion:\n");
     for (int i = 0; i < num_zonas; i++) {
-        printf("\nZona: %s\n", zonas[i].nombre);
-        printf("------------------------------------------------------------\n");
-        printf("Fecha      | PM2.5 | PM10 | CO2  | SO2  | NO2  | Temp | Hum | V.Viento\n");
-        printf("-----------|-------|------|------|------|------|------|-----|----------\n");
-        for (int j = 0; j < zonas[i].dias_registrados; j++) {
-            RegistroDia *r = &zonas[i].historial[j];
+        printf("%d. %s\n", i + 1, zonas[i].nombre);
+    }
+    if (!leer_int("Opcion: ", 1, num_zonas, &op)) return;
+
+    Zona *z = &zonas[op - 1];
+
+    printf("\nINFORMACION DE ZONA MONITOREADA: %s\n", z->nombre);
+    printf("------------------------------------------------------------\n");
+    printf("Fecha      | PM2.5 | PM10 | CO2  | SO2  | NO2  | Temp | Hum | V.Viento\n");
+    printf("-----------|-------|------|------|------|------|------|-----|----------\n");
+    if (z->dias_registrados > 0) {
+        for (int j = 0; j < z->dias_registrados; j++) {
+            RegistroDia *r = &z->historial[j];
             printf("%-10s | %5.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %3.1f | %7.1f\n",
                 r->fecha, r->pm25, r->pm10, r->co2, r->so2, r->no2, r->temperatura, r->humedad, r->velocidad_viento);
         }
+    } else {
+        printf("No hay datos registrados para esta zona.\n");
     }
 }
 
