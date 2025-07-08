@@ -19,32 +19,20 @@ int cargar_zonas(Zona zonas[], int *num_zonas) {
     }
     for (int i = 0; i < *num_zonas; i++) {
         // Leer nombre de zona
-        if (!fgets(zonas[i].nombre, NOMBRE_ZONA, f)) {
-            fclose(f);
-            return 0;
-        }
+        if (!fgets(zonas[i].nombre, NOMBRE_ZONA, f)) { fclose(f); return 0; }
         zonas[i].nombre[strcspn(zonas[i].nombre, "\n")] = '\0';
         // Leer latitud y longitud
-        if (fscanf(f, "%f %f\n", &zonas[i].latitud, &zonas[i].longitud) != 2) {
-            fclose(f);
-            return 0;
-        }
+        if (fscanf(f, "%f %f\n", &zonas[i].latitud, &zonas[i].longitud) != 2) { fclose(f); return 0; }
         // Leer días registrados
         int dias;
-        if (fscanf(f, "%d\n", &dias) != 1) {
-            fclose(f);
-            return 0;
-        }
+        if (fscanf(f, "%d\n", &dias) != 1) { fclose(f); return 0; }
         zonas[i].dias_registrados = dias;
         // Leer historial de días
         for (int j = 0; j < dias; j++) {
             RegistroDia *r = &zonas[i].historial[j];
             if (fscanf(f, "%10s %f %f %f %f %f %f %f %f\n",
-                       r->fecha,
-                       &r->pm25, &r->pm10, &r->co2,
-                       &r->so2, &r->no2,
-                       &r->temperatura, &r->humedad,
-                       &r->velocidad_viento) != 9) {
+                       r->fecha, &r->pm25, &r->pm10, &r->co2, &r->so2, &r->no2,
+                       &r->temperatura, &r->humedad, &r->velocidad_viento) != 9) {
                 fclose(f);
                 return 0;
             }
@@ -66,11 +54,8 @@ int guardar_zonas(Zona zonas[], int num_zonas) {
         for (int j = 0; j < zonas[i].dias_registrados; j++) {
             RegistroDia *r = &zonas[i].historial[j];
             fprintf(f, "%s %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f\n",
-                    r->fecha,
-                    r->pm25, r->pm10, r->co2,
-                    r->so2, r->no2,
-                    r->temperatura, r->humedad,
-                    r->velocidad_viento);
+                    r->fecha, r->pm25, r->pm10, r->co2, r->so2, r->no2,
+                    r->temperatura, r->humedad, r->velocidad_viento);
         }
     }
     fclose(f);
@@ -120,11 +105,11 @@ int leer_float(const char *mensaje, float min, float max, float *valor) {
         printf("%s", mensaje);
         if (!fgets(buffer, sizeof(buffer), stdin)) return 0;
         temp = strtof(buffer, &endptr);
-        if (endptr == buffer || *endptr != '\n') {
+        if (endptr == buffer || (*endptr != '\n' && *endptr != '\0')) {
             printf("Entrada invalida. Intente de nuevo.\n");
             continue;
         }
-        if (!validar_float(temp, min, max)) {
+        if (temp < min || temp > max) {
             printf("Valor fuera de rango (%.2f - %.2f).\n", min, max);
             continue;
         }
@@ -137,12 +122,13 @@ int leer_float(const char *mensaje, float min, float max, float *valor) {
 int leer_int(const char *mensaje, int min, int max, int *valor) {
     char buffer[50];
     char *endptr;
-    int temp, valido = 0;
+    long temp;
+    int valido = 0;
     do {
         printf("%s", mensaje);
         if (!fgets(buffer, sizeof(buffer), stdin)) return 0;
         temp = strtol(buffer, &endptr, 10);
-        if (endptr == buffer || *endptr != '\n') {
+        if (endptr == buffer || (*endptr != '\n' && *endptr != '\0')) {
             printf("Entrada invalida. Intente de nuevo.\n");
             continue;
         }
@@ -150,10 +136,123 @@ int leer_int(const char *mensaje, int min, int max, int *valor) {
             printf("Valor fuera de rango (%d - %d).\n", min, max);
             continue;
         }
-        *valor = temp;
+        *valor = (int)temp;
         valido = 1;
     } while (!valido);
     return 1;
+}
+
+void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
+    int op;
+    printf("\nSeleccione la zona para ingresar datos:\n");
+    for (int i = 0; i < num_zonas; i++)
+        printf("%d. %s\n", i + 1, zonas[i].nombre);
+    if (!leer_int("Opcion: ", 1, num_zonas, &op)) return;
+    
+    Zona *z = &zonas[op - 1];
+    if (z->dias_registrados == DIAS_HISTORIAL) {
+        for (int i = 1; i < DIAS_HISTORIAL; i++)
+            z->historial[i - 1] = z->historial[i];
+        z->dias_registrados--;
+    }
+    RegistroDia *r = &z->historial[z->dias_registrados];
+    printf("Ingrese la fecha (YYYY-MM-DD): ");
+    fgets(r->fecha, sizeof(r->fecha), stdin);
+    r->fecha[strcspn(r->fecha, "\n")] = 0;
+    leer_float("PM2.5: ", 0, 99999, &r->pm25);
+    leer_float("PM10: ", 0, 99999, &r->pm10);
+    leer_float("CO2: ", 0, 99999, &r->co2);
+    leer_float("SO2: ", 0, 99999, &r->so2);
+    leer_float("NO2: ", 0, 99999, &r->no2);
+    leer_float("Temperatura (C): ", -50, 60, &r->temperatura);
+    leer_float("Humedad (%%): ", 0, 100, &r->humedad);
+    leer_float("Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
+    z->dias_registrados++;
+    guardar_zonas(zonas, num_zonas);
+    printf("Datos ingresados correctamente.\n");
+}
+
+void anadir_zona(Zona zonas[], int *num_zonas) {
+    if (*num_zonas >= MAX_ZONAS) {
+        printf("No se pueden agregar mas zonas.\n");
+        return;
+    }
+    printf("Nombre de la nueva zona: ");
+    fgets(zonas[*num_zonas].nombre, NOMBRE_ZONA, stdin);
+    zonas[*num_zonas].nombre[strcspn(zonas[*num_zonas].nombre, "\n")] = 0;
+    leer_float("Latitud de la zona: ", -90, 90, &zonas[*num_zonas].latitud);
+    leer_float("Longitud de la zona: ", -180, 180, &zonas[*num_zonas].longitud);
+    zonas[*num_zonas].dias_registrados = 0;
+    (*num_zonas)++;
+    guardar_zonas(zonas, *num_zonas);
+    printf("Zona agregada correctamente.\n");
+}
+
+void editar_zona(Zona zonas[], int num_zonas) {
+    int op_zona;
+    printf("\nSeleccione la zona a editar:\n");
+    for (int i = 0; i < num_zonas; i++)
+        printf("%d. %s\n", i + 1, zonas[i].nombre);
+    if (!leer_int("Opcion: ", 1, num_zonas, &op_zona)) return;
+
+    Zona *z = &zonas[op_zona - 1];
+    int op_edit;
+
+    do {
+        printf("\n--- Editando Zona: %s ---\n", z->nombre);
+        printf("1. Editar Nombre\n");
+        printf("2. Editar Coordenadas\n");
+        printf("3. Editar datos de un dia\n");
+        printf("0. Volver al menu principal\n");
+        if (!leer_int("Opcion: ", 0, 3, &op_edit)) continue;
+
+        switch (op_edit) {
+            case 1: {
+                printf("Nuevo nombre: ");
+                char buffer[NOMBRE_ZONA];
+                fgets(buffer, NOMBRE_ZONA, stdin);
+                buffer[strcspn(buffer, "\n")] = 0;
+                if (strlen(buffer) > 0) {
+                    strncpy(z->nombre, buffer, NOMBRE_ZONA);
+                    printf("Nombre actualizado.\n");
+                }
+                break;
+            }
+            case 2: {
+                leer_float("Nueva latitud: ", -90.0, 90.0, &z->latitud);
+                leer_float("Nueva longitud: ", -180.0, 180.0, &z->longitud);
+                printf("Coordenadas actualizadas.\n");
+                break;
+            }
+            case 3: {
+                if (z->dias_registrados == 0) {
+                    printf("No hay datos historicos para editar.\n");
+                    break;
+                }
+                printf("Seleccione el registro a editar:\n");
+                for (int i = 0; i < z->dias_registrados; i++) {
+                    printf("%d. %s\n", i + 1, z->historial[i].fecha);
+                }
+                int op_fecha;
+                if (!leer_int("Opcion: ", 1, z->dias_registrados, &op_fecha)) break;
+                
+                RegistroDia *r = &z->historial[op_fecha - 1];
+                printf("Editando datos para la fecha %s...\n", r->fecha);
+                leer_float("Nuevo PM2.5: ", 0, 99999, &r->pm25);
+                leer_float("Nuevo PM10: ", 0, 99999, &r->pm10);
+                leer_float("Nuevo CO2: ", 0, 99999, &r->co2);
+                leer_float("Nuevo SO2: ", 0, 99999, &r->so2);
+                leer_float("Nuevo NO2: ", 0, 99999, &r->no2);
+                leer_float("Nueva Temperatura (C): ", -50, 60, &r->temperatura);
+                leer_float("Nueva Humedad (%%): ", 0, 100, &r->humedad);
+                leer_float("Nueva Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
+                printf("Datos del %s actualizados.\n", r->fecha);
+                break;
+            }
+        }
+    } while (op_edit != 0);
+    guardar_zonas(zonas, num_zonas);
+    printf("Cambios guardados.\n");
 }
 
 void mostrar_estado_actual(Zona zonas[], int num_zonas) {
@@ -202,35 +301,6 @@ void mostrar_predicciones(Zona zonas[], int num_zonas) {
         printf("%5.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %3.1f | %7.1f\n",
             sumas[0], sumas[1], sumas[2], sumas[3], sumas[4], sumas[5], sumas[6], sumas[7]);
     }
-}
-
-void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
-    int op;
-    printf("\nSeleccione la zona para ingresar datos:\n");
-    for (int i = 0; i < num_zonas; i++)
-        printf("%d. %s\n", i+1, zonas[i].nombre);
-    if (!leer_int("Opcion: ", 1, num_zonas, &op)) return;
-    Zona *z = &zonas[op-1];
-    if (z->dias_registrados == DIAS_HISTORIAL) {
-        for (int i = 1; i < DIAS_HISTORIAL; i++)
-            z->historial[i-1] = z->historial[i];
-        z->dias_registrados--;
-    }
-    RegistroDia *r = &z->historial[z->dias_registrados];
-    printf("Ingrese la fecha (YYYY-MM-DD): ");
-    fgets(r->fecha, sizeof(r->fecha), stdin);
-    r->fecha[strcspn(r->fecha, "\n")] = 0;
-    leer_float("PM2.5: ", 0, 99999, &r->pm25);
-    leer_float("PM10: ", 0, 99999, &r->pm10);
-    leer_float("CO2: ", 0, 99999, &r->co2);
-    leer_float("SO2: ", 0, 99999, &r->so2);
-    leer_float("NO2: ", 0, 99999, &r->no2);
-    leer_float("Temperatura (C): ", -50, 60, &r->temperatura);
-    leer_float("Humedad (%%): ", 0, 100, &r->humedad);
-    leer_float("Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
-    z->dias_registrados++;
-    guardar_zonas(zonas, num_zonas);
-    printf("Datos ingresados correctamente.\n");
 }
 
 void mostrar_info_zonas(Zona zonas[], int num_zonas) {
@@ -329,7 +399,6 @@ void generar_reporte(Zona zonas[], int num_zonas) {
             fprintf(f, "Humedad: %.1f%%\n", r_actual->humedad);
             fprintf(f, "Viento: %.1f km/h\n\n", r_actual->velocidad_viento);
 
-            // Predicciones
             fprintf(f, "PREDICCIONES 24H:\n");
             if (z->dias_registrados >= 3) {
                 float sumas[5] = {0};
@@ -351,11 +420,9 @@ void generar_reporte(Zona zonas[], int num_zonas) {
                 fprintf(f, "No hay suficientes datos para predecir.\n\n");
             }
 
-            // ICA
             const char* categoria_ica = obtener_categoria_ica(r_actual->pm25);
             fprintf(f, "INDICE DE CALIDAD DEL AIRE: %.2f (%s)\n\n", r_actual->pm25, categoria_ica);
 
-            // Promedios
             fprintf(f, "PROMEDIOS HISTORICOS (%d dias):\n", z->dias_registrados);
             float promedios[5] = {0};
             for (int j = 0; j < z->dias_registrados; j++) {
@@ -391,55 +458,6 @@ void exportar_respaldo(Zona zonas[], int num_zonas) {
     fwrite(zonas, sizeof(Zona), num_zonas, f);
     fclose(f);
     printf("Respaldo exportado en %s\n", ARCHIVO_RESPALDO);
-}
-
-void anadir_zona(Zona zonas[], int *num_zonas) {
-    if (*num_zonas >= MAX_ZONAS) {
-        printf("No se pueden agregar mas zonas.\n");
-        return;
-    }
-    printf("Nombre de la nueva zona: ");
-    fgets(zonas[*num_zonas].nombre, NOMBRE_ZONA, stdin);
-    zonas[*num_zonas].nombre[strcspn(zonas[*num_zonas].nombre, "\n")] = 0;
-    
-    leer_float("Latitud de la zona: ", -90, 90, &zonas[*num_zonas].latitud);
-    leer_float("Longitud de la zona: ", -180, 180, &zonas[*num_zonas].longitud);
-
-    zonas[*num_zonas].dias_registrados = 0;
-    (*num_zonas)++;
-    guardar_zonas(zonas, *num_zonas);
-    printf("Zona agregada correctamente.\n");
-}
-
-void editar_zona(Zona zonas[], int num_zonas) {
-    int op;
-    printf("\nSeleccione la zona a editar:\n");
-    for (int i = 0; i < num_zonas; i++)
-        printf("%d. %s\n", i+1, zonas[i].nombre);
-    if (!leer_int("Opcion: ", 1, num_zonas, &op)) return;
-    Zona *z = &zonas[op-1];
-    printf("Nuevo nombre (deje vacio para no cambiar): ");
-    char buffer[NOMBRE_ZONA];
-    fgets(buffer, NOMBRE_ZONA, stdin);
-    if (buffer[0] != '\n') {
-        buffer[strcspn(buffer, "\n")] = 0;
-        strncpy(z->nombre, buffer, NOMBRE_ZONA);
-    }
-
-    printf("Nueva latitud (actual: %.4f, deje vacio para no cambiar): ", z->latitud);
-    fgets(buffer, sizeof(buffer), stdin);
-    if (buffer[0] != '\n') {
-        leer_float("Latitud: ", -90, 90, &z->latitud);
-    }
-
-    printf("Nueva longitud (actual: %.4f, deje vacio para no cambiar): ", z->longitud);
-    fgets(buffer, sizeof(buffer), stdin);
-    if (buffer[0] != '\n') {
-        leer_float("Longitud: ", -180, 180, &z->longitud);
-    }
-
-    guardar_zonas(zonas, num_zonas);
-    printf("Zona editada correctamente.\n");
 }
 
 void eliminar_zona(Zona zonas[], int *num_zonas) {
