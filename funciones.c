@@ -1,31 +1,3 @@
-/*
- * PREGUNTA DE PROFESOR: ¿Por qué se incluyen estas librerías? ¿Qué aporta cada una y qué pasa si las borras?
- *
- * RESPUESTA:
- * - <stdio.h> (Standard Input/Output): Es la más fundamental. Proporciona las funciones para interactuar con la consola y los archivos.
- *   Ejemplos clave: printf (imprimir), scanf (leer), fopen (abrir archivo), fclose (cerrar), fgets (leer línea de texto), fprintf (escribir en archivo).
- *   Si se borra, el programa sería mudo y ciego: no podría mostrar nada en pantalla ni leer o escribir en los archivos de datos.
- *
- * - <stdlib.h> (Standard Library): Ofrece funciones de utilidad general, especialmente para conversión de tipos y memoria.
- *   Ejemplos clave: strtof/strtol (convertir texto a número), rand (generar números aleatorios para los datos de ejemplo), exit.
- *   Si se borra, nuestras funciones de lectura segura (`leer_float`, `leer_int`) fallarían y no podríamos generar datos iniciales.
- *
- * - <string.h> (String Handling): Contiene funciones para manipular cadenas de caracteres (arrays de char).
- *   Ejemplos clave: strcpy/strncpy (copiar texto), strcat (concatenar texto), strlen (obtener longitud), strcspn (buscar un caracter en un texto).
- *   Si se borra, no podríamos manejar los nombres de las zonas, las fechas, ni construir los mensajes de alerta.
- *
- * - <ctype.h> (Character Type): Proporciona funciones para clasificar y convertir caracteres (ej: isdigit, isalpha, toupper).
- *   Aunque no se usa activamente en la versión final, es muy útil para validaciones de entrada más complejas.
- *
- * - <time.h> (Time Handling): Permite trabajar con las fechas y horas del sistema.
- *   Ejemplos clave: time (obtener el tiempo actual), localtime (convertir a una estructura de tiempo local), strftime (formatear fecha/hora a texto).
- *   Si se borra, la función `generar_reporte` no podría mostrar la fecha y hora en la que se creó el informe.
- *
- * - "funciones.h": Este es nuestro propio archivo de cabecera. Se incluye con comillas dobles ("") porque es un archivo local
- *   del proyecto, a diferencia de las librerías del sistema que usan paréntesis angulares (<>).
- *   Contiene las definiciones de nuestras estructuras (`Zona`, `RegistroDia`) y los prototipos de todas nuestras funciones.
- *   Si se borra, `main.c` y `funciones.c` no sabrían qué es una `Zona` o qué funciones existen, y el programa no compilaría.
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,25 +8,7 @@
 #define ARCHIVO_DATOS "datos_zonas.txt"
 #define ARCHIVO_RESPALDO "respaldo_zonas.txt"
 
-/*
- * PREGUNTA DE PROFESOR: Explique el proceso de lectura de datos desde el archivo. ¿Por qué se mezcla `fscanf` y `fgets`?
- * ¿Y por qué son importantes las comprobaciones `if (... != ...)`?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Esta función lee los datos desde "datos_zonas.txt" y los carga en el array de structs `zonas`.
- *    El formato del archivo es estricto: primero el número de zonas, y luego, para cada zona, su nombre, días registrados y los datos de cada día.
- *    Se usa `fscanf` para leer números (`%d`, `%f`) y `fgets` para leer el nombre de la zona, que puede contener espacios.
- *    Mezclarlos es necesario porque `fscanf` puede dejar saltos de línea en el buffer que `fgets` leería erróneamente.
- *    La línea `zonas[i].nombre[strcspn(...)] = '\0';` es crucial para eliminar el salto de línea que `fgets` sí captura.
- *
- * 2. ¿QUÉ PASA SI SE BORRA?: Si esta función se elimina, el programa pierde su capacidad de persistencia. Cada vez que se inicie,
- *    empezaría desde cero, con los datos de ejemplo, ignorando cualquier cambio que el usuario haya hecho en sesiones anteriores.
- *
- * 3. IMPORTANCIA DE LAS COMPROBACIONES: Cada `if (fscanf(...) != ...)` o `if (!fgets(...))` comprueba si la operación de lectura tuvo éxito.
- *    Si el archivo está corrupto o incompleto, estas comprobaciones fallarán. En ese caso, la función cierra el archivo (`fclose(f)`)
- *    y retorna 0 (falso), indicando a `main()` que la carga falló y que debe crear un archivo nuevo. Sin estas comprobaciones,
- *    el programa podría intentar usar datos basura y fallar de forma inesperada (Crash).
- */
+// Carga los datos desde un archivo de texto
 int cargar_zonas(Zona zonas[], int *num_zonas) {
     FILE *f = fopen(ARCHIVO_DATOS, "r");
     if (!f) return 0;
@@ -84,31 +38,6 @@ int cargar_zonas(Zona zonas[], int *num_zonas) {
     }
     fclose(f);
     return 1;
-}
-
-/*
- * PREGUNTA DE PROFESOR: ¿Cuál es la diferencia entre este respaldo y el guardado normal? ¿Por qué usar `wb` y `fwrite`?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Esta función crea una copia de seguridad de los datos en formato BINARIO. A diferencia de `guardar_zonas` que crea un
- *    archivo de texto legible, `exportar_respaldo` usa `fwrite` para volcar la representación exacta en memoria de las estructuras
- *    directamente al archivo. El modo "wb" significa "write binary" (escritura binaria).
- *
- * 2. ¿POR QUÉ USAR ESTE MÉTODO?: Los archivos binarios son generalmente más rápidos de leer/escribir y ocupan menos espacio que sus
- *    equivalentes en texto. Además, al guardar el bloque de memoria tal cual, se evita la complejidad de convertir números a texto y viceversa.
- *    Sin embargo, tiene una desventaja: el archivo binario no es legible por humanos y puede no ser portable entre sistemas con
- *    arquitecturas diferentes (ej. 32-bit vs 64-bit).
- */
-void exportar_respaldo(Zona zonas[], int num_zonas) {
-    FILE *f = fopen(ARCHIVO_RESPALDO, "wb");
-    if (!f) {
-        printf("No se pudo exportar el respaldo.\n");
-        return;
-    }
-    fwrite(&num_zonas, sizeof(int), 1, f);
-    fwrite(zonas, sizeof(Zona), num_zonas, f);
-    fclose(f);
-    printf("Respaldo exportado en %s\n", ARCHIVO_RESPALDO);
 }
 
 // Guarda los datos en un archivo de texto
@@ -155,19 +84,6 @@ void mostrar_menu() {
     printf("Seleccione una opcion: ");
 }
 
-/*
- * PREGUNTA DE PROFESOR: ¿Para qué sirve esta función? ¿No se podría simplemente usar `getchar()`?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Esta función limpia el búfer de entrada estándar (stdin). Consume y descarta todos los caracteres
- *    que queden en el búfer hasta que encuentra un salto de línea ('\n') o el fin de archivo (EOF).
- *
- * 2. ¿POR QUÉ ES NECESARIA?: Es vital después de usar `scanf`. `scanf("%d", ...)` lee el número, pero deja el '\n' (Enter)
- *    en el búfer. Si la siguiente operación es un `fgets` (que lee hasta el '\n'), leería inmediatamente ese residuo
- *    y no esperaría la entrada del usuario. Esta función previene ese comportamiento errático.
- *    Usar un solo `getchar()` no es suficiente porque el usuario podría haber escrito más caracteres (ej: "5abc")
- *    y el bucle `while` asegura que TODO el búfer se vacíe.
- */
 void limpiar_buffer() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
@@ -177,21 +93,6 @@ int validar_float(float valor, float min, float max) {
     return valor >= min && valor <= max;
 }
 
-/*
- * PREGUNTA DE PROFESOR: ¿Cuál es el propósito de tener funciones como `leer_float` y `leer_int` en lugar de usar `scanf` directamente?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Estas son funciones de "entrada segura" o "programación defensiva". No solo leen un número, sino que validan
- *    completamente la entrada del usuario en un bucle `do-while`:
- *    a) Usan `fgets` para leer la línea completa y evitar problemas de búfer.
- *    b) Usan `strtof`/`strtol` para convertir el texto a número y detectar si se introdujeron caracteres no numéricos.
- *    c) Verifican que el valor esté dentro de un rango (`min`, `max`).
- *    El bucle no termina hasta que el usuario introduce un valor 100% válido.
- *
- * 2. ¿QUÉ PASA SI SE BORRA?: Si usáramos `scanf` directamente, el programa sería frágil. Si un usuario introduce "hola" en lugar de un número,
- *    `scanf` fallaría, la variable quedaría sin inicializar y el programa podría entrar en un bucle infinito o fallar.
- *    Estas funciones hacen que el programa sea robusto y a prueba de errores del usuario.
- */
 int leer_float(const char *mensaje, float min, float max, float *valor) {
     char buffer[50];
     char *endptr;
@@ -238,20 +139,6 @@ int leer_int(const char *mensaje, int min, int max, int *valor) {
     return 1;
 }
 
-/*
- * PREGUNTA DE PROFESOR: Explique la lógica de este bloque `if`. ¿Cómo se gestiona el historial de 7 días?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Este bloque implementa un "buffer circular" o "cola" para el historial. Antes de añadir un nuevo registro,
- *    comprueba si el historial ya está lleno (`dias_registrados == DIAS_HISTORIAL`).
- *    Si está lleno, mueve cada registro una posición hacia atrás (el del día 2 pasa al 1, el del 3 al 2, etc.),
- *    descartando efectivamente el registro más antiguo (el que estaba en la posición 0). Luego decrementa el contador
- *    para hacer espacio para el nuevo registro que se añadirá justo después.
- *
- * 2. ¿QUÉ PASA SI SE BORRA?: Si se elimina este bloque, el programa intentaría escribir más allá del límite del array `historial`
- *    (que tiene un tamaño fijo de `DIAS_HISTORIAL`). Esto es un error grave llamado "desbordamiento de búfer" (buffer overflow),
- *    que podría corromper la memoria y causar que el programa falle de manera impredecible. Es una pieza clave para la estabilidad.
- */
 void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
     int op;
     printf("\nSeleccione la zona para ingresar datos:\n");
@@ -287,13 +174,32 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
         printf("No se pueden agregar mas zonas.\n");
         return;
     }
+    
+    Zona *nueva_zona = &zonas[*num_zonas];
+
     printf("Nombre de la nueva zona: ");
-    fgets(zonas[*num_zonas].nombre, NOMBRE_ZONA, stdin);
-    zonas[*num_zonas].nombre[strcspn(zonas[*num_zonas].nombre, "\n")] = 0;
-    zonas[*num_zonas].dias_registrados = 0;
+    fgets(nueva_zona->nombre, NOMBRE_ZONA, stdin);
+    nueva_zona->nombre[strcspn(nueva_zona->nombre, "\n")] = 0;
+
+    // Se añaden 4 días de datos de ejemplo para que las predicciones funcionen
+    nueva_zona->dias_registrados = 4;
+    for (int i = 0; i < 4; i++) {
+        RegistroDia *r = &nueva_zona->historial[i];
+        sprintf(r->fecha, "2025-07-%02d", i + 1); // Fechas de ejemplo
+        r->pm25 = 15.0f + (rand() % 200) / 10.0f;
+        r->pm10 = 25.0f + (rand() % 300) / 10.0f;
+        r->co2 = 400.0f + (rand() % 2000) / 10.0f;
+        r->so2 = 5.0f + (rand() % 150) / 10.0f;
+        r->no2 = 10.0f + (rand() % 300) / 10.0f;
+        r->temperatura = 10.0f + (rand() % 150) / 10.0f;
+        r->humedad = 50.0f + (rand() % 300) / 10.0f;
+        r->velocidad_viento = 5.0f + (rand() % 150) / 10.0f;
+    }
+
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
-    printf("Zona agregada correctamente.\n");
+    printf("\nZona agregada correctamente con 4 dias de datos de ejemplo.\n");
+    printf("Ya puede utilizar la funcion de prediccion para esta zona.\n");
 }
 
 void editar_zona(Zona zonas[], int num_zonas) {
@@ -375,18 +281,6 @@ void mostrar_estado_actual(Zona zonas[], int num_zonas) {
     }
 }
 
-/*
- * PREGUNTA DE PROFESOR: ¿Qué tipo de algoritmo se usa aquí para las predicciones y por qué se eligió?
- *
- * RESPUESTA:
- * 1. ¿QUÉ HACE?: Esta función calcula una predicción simple para las próximas 24 horas usando un promedio ponderado.
- *    Le da más peso a los datos más recientes. Concretamente, usa el 60% del valor del último día, el 30% del penúltimo
- *    y el 10% del antepenúltimo. Requiere un mínimo de 3 días de datos para poder funcionar.
- *
- * 2. ¿POR QUÉ ESTE ALGORITMO?: Se eligió por su simplicidad y efectividad para este caso. Es un modelo de predicción básico
- *    que asume que el futuro cercano se parecerá más al pasado reciente. Es computacionalmente muy barato (rápido)
- *    y fácil de implementar, lo que lo hace ideal para un sistema como este sin requerir librerías complejas de análisis de datos.
- */
 void mostrar_predicciones(Zona zonas[], int num_zonas) {
     printf("\nPREDICCIONES PARA LAS PROXIMAS 24 HORAS:\n");
     for (int i = 0; i < num_zonas; i++) {
@@ -579,6 +473,18 @@ void generar_reporte(Zona zonas[], int num_zonas) {
 
     fclose(f);
     printf("Reporte integral generado en reporte_integral.txt\n");
+}
+
+void exportar_respaldo(Zona zonas[], int num_zonas) {
+    FILE *f = fopen(ARCHIVO_RESPALDO, "wb");
+    if (!f) {
+        printf("No se pudo exportar el respaldo.\n");
+        return;
+    }
+    fwrite(&num_zonas, sizeof(int), 1, f);
+    fwrite(zonas, sizeof(Zona), num_zonas, f);
+    fclose(f);
+    printf("Respaldo exportado en %s\n", ARCHIVO_RESPALDO);
 }
 
 void eliminar_zona(Zona zonas[], int *num_zonas) {
