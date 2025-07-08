@@ -255,9 +255,10 @@ void editar_zona(Zona zonas[], int num_zonas) {
     do {
         printf("\n--- Editando Zona: %s ---\n", z->nombre);
         printf("1. Editar Nombre\n");
-        printf("2. Editar datos de un dia\n");
+        printf("2. Editar todos los datos de un dia\n");
+        printf("3. Editar solo la fecha de un dia\n");
         printf("0. Volver al menu principal\n");
-        if (!leer_int("Opcion: ", 0, 2, &op_edit)) continue;
+        if (!leer_int("Opcion: ", 0, 3, &op_edit)) continue;
 
         switch (op_edit) {
             case 1: {
@@ -294,6 +295,34 @@ void editar_zona(Zona zonas[], int num_zonas) {
                 leer_float("Nueva Humedad (%%): ", 0, 100, &r->humedad);
                 leer_float("Nueva Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
                 printf("Datos del %s actualizados.\n", r->fecha);
+                break;
+            }
+            case 3: {
+                if (z->dias_registrados == 0) {
+                    printf("No hay datos historicos para editar.\n");
+                    break;
+                }
+                printf("Seleccione el registro para cambiar la fecha:\n");
+                for (int i = 0; i < z->dias_registrados; i++) {
+                    printf("%d. %s\n", i + 1, z->historial[i].fecha);
+                }
+                int op_fecha;
+                if (!leer_int("Opcion: ", 1, z->dias_registrados, &op_fecha)) break;
+
+                RegistroDia *r = &z->historial[op_fecha - 1];
+                char fecha_anterior[11];
+                strcpy(fecha_anterior, r->fecha);
+
+                printf("Ingrese la nueva fecha (YYYY-MM-DD): ");
+                fgets(r->fecha, sizeof(r->fecha), stdin);
+                r->fecha[strcspn(r->fecha, "\n")] = 0;
+                if (strlen(r->fecha) > 0) {
+                    printf("Fecha del registro actualizada de %s a %s.\n", fecha_anterior, r->fecha);
+                } else {
+                    // Si el usuario no ingresa nada, restauramos la fecha original
+                    strcpy(r->fecha, fecha_anterior);
+                    printf("No se ingreso nueva fecha. La fecha no ha cambiado.\n");
+                }
                 break;
             }
         }
