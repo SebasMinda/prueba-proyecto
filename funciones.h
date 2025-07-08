@@ -13,6 +13,8 @@ typedef struct {
 
 typedef struct {
     char nombre[NOMBRE_ZONA];
+    float latitud;
+    float longitud;
     RegistroDia historial[DIAS_HISTORIAL];
     int dias_registrados;
 } Zona;
@@ -24,8 +26,7 @@ void mostrar_estado_actual(Zona zonas[], int num_zonas);
 void mostrar_predicciones(Zona zonas[], int num_zonas);
 void ingresar_datos_actuales(Zona zonas[], int num_zonas);
 void mostrar_info_zonas(Zona zonas[], int num_zonas);
-void generar_alertas(Zona zonas[], int num_zonas);
-void generar_recomendaciones(Zona zonas[], int num_zonas);
+void generar_alertas_y_recomendaciones(Zona zonas[], int num_zonas);
 void generar_reporte(Zona zonas[], int num_zonas);
 void exportar_respaldo(Zona zonas[], int num_zonas);
 void anadir_zona(Zona zonas[], int *num_zonas);

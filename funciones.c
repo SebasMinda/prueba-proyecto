@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 #include "funciones.h"
 
 #define ARCHIVO_DATOS "datos_zonas.txt"
@@ -23,6 +24,11 @@ int cargar_zonas(Zona zonas[], int *num_zonas) {
             return 0;
         }
         zonas[i].nombre[strcspn(zonas[i].nombre, "\n")] = '\0';
+        // Leer latitud y longitud
+        if (fscanf(f, "%f %f\n", &zonas[i].latitud, &zonas[i].longitud) != 2) {
+            fclose(f);
+            return 0;
+        }
         // Leer días registrados
         int dias;
         if (fscanf(f, "%d\n", &dias) != 1) {
@@ -55,6 +61,7 @@ int guardar_zonas(Zona zonas[], int num_zonas) {
     fprintf(f, "%d\n", num_zonas);
     for (int i = 0; i < num_zonas; i++) {
         fprintf(f, "%s\n", zonas[i].nombre);
+        fprintf(f, "%.4f %.4f\n", zonas[i].latitud, zonas[i].longitud);
         fprintf(f, "%d\n", zonas[i].dias_registrados);
         for (int j = 0; j < zonas[i].dias_registrados; j++) {
             RegistroDia *r = &zonas[i].historial[j];
@@ -79,13 +86,12 @@ void mostrar_menu() {
     printf("2. Mostrar predicciones para 24 horas\n");
     printf("3. Ingresar datos actuales de una zona\n");
     printf("4. Mostrar informacion de zonas monitoreadas\n");
-    printf("5. Generar alertas del sistema\n");
-    printf("6. Generar recomendaciones para una zona\n");
-    printf("7. Generar reporte completo\n");
-    printf("8. Exportar copia de respaldo\n");
-    printf("9. Anadir nueva zona de monitoreo\n");
-    printf("10. Editar datos de una zona existente\n");
-    printf("11. Eliminar una zona del sistema\n");
+    printf("5. Generar alertas y recomendaciones\n");
+    printf("6. Generar reporte completo\n");
+    printf("7. Exportar copia de respaldo\n");
+    printf("8. Anadir nueva zona de monitoreo\n");
+    printf("9. Editar datos de una zona existente\n");
+    printf("10. Eliminar una zona del sistema\n");
     printf("0. Salir del sistema\n");
     printf("1000. Reiniciar programa (eliminar todos los datos)\n");
     printf("============================================================\n");
@@ -242,59 +248,137 @@ void mostrar_info_zonas(Zona zonas[], int num_zonas) {
     }
 }
 
-void generar_alertas(Zona zonas[], int num_zonas) {
-    printf("\nALERTAS DEL SISTEMA:\n");
+void generar_alertas_y_recomendaciones(Zona zonas[], int num_zonas) {
+    printf("\nALERTAS Y RECOMENDACIONES DEL SISTEMA:\n");
+    int alertas_generadas = 0;
     for (int i = 0; i < num_zonas; i++) {
-        int alerta = 0;
         if (zonas[i].dias_registrados == 0) continue;
-        RegistroDia *r = &zonas[i].historial[zonas[i].dias_registrados-1];
-        if (r->pm25 > 25 || r->pm10 > 50 || r->co2 > 1000 || r->so2 > 20 || r->no2 > 40) alerta = 1;
+
+        RegistroDia *r = &zonas[i].historial[zonas[i].dias_registrados - 1];
+        int alerta = 0;
+        char contaminantes[256] = "";
+
+        if (r->pm25 > 25) { strcat(contaminantes, "PM2.5, "); alerta = 1; }
+        if (r->pm10 > 50) { strcat(contaminantes, "PM10, "); alerta = 1; }
+        if (r->co2 > 1000) { strcat(contaminantes, "CO2, "); alerta = 1; }
+        if (r->so2 > 20) { strcat(contaminantes, "SO2, "); alerta = 1; }
+        if (r->no2 > 40) { strcat(contaminantes, "NO2, "); alerta = 1; }
+
         if (alerta) {
-            printf("ALERTA: %s supera los limites OMS. Revise los datos.\n", zonas[i].nombre);
+            alertas_generadas = 1;
+            contaminantes[strlen(contaminantes) - 2] = '\0';
+            printf("\n------------------------------------------------------------\n");
+            printf("ALERTA EN ZONA: %s\n", zonas[i].nombre);
+            printf("  -> Niveles altos de: %s.\n", contaminantes);
+            printf("  -> RECOMENDACIONES:\n");
+            printf("     - Reducir el uso de vehiculos privados y fomentar el transporte publico.\n");
+            printf("     - Evitar la quema de basura, hojas secas y otros materiales.\n");
+            printf("     - Se recomienda a la poblacion vulnerable (ninos, ancianos, personas con enfermedades respiratorias) no exponerse al aire libre.\n");
+            printf("     - Usar mascarilla en exteriores para proteger las vias respiratorias.\n");
         }
     }
+
+    if (!alertas_generadas) {
+        printf("\nNo hay alertas activas. La calidad del aire en todas las zonas esta dentro de los limites aceptables.\n");
+    }
+    printf("\n");
 }
 
-void generar_recomendaciones(Zona zonas[], int num_zonas) {
-    int op;
-    printf("\nSeleccione la zona para recomendaciones:\n");
-    for (int i = 0; i < num_zonas; i++)
-        printf("%d. %s\n", i+1, zonas[i].nombre);
-    if (!leer_int("Opcion: ", 1, num_zonas, &op)) return;
-    Zona *z = &zonas[op-1];
-    if (z->dias_registrados == 0) {
-        printf("No hay datos para esta zona.\n");
-        return;
-    }
-    RegistroDia *r = &z->historial[z->dias_registrados-1];
-    printf("\nRecomendaciones para %s:\n", z->nombre);
-    if (r->pm25 > 25 || r->pm10 > 50 || r->co2 > 1000 || r->so2 > 20 || r->no2 > 40) {
-        printf("- Reducir el trafico vehicular.\n");
-        printf("- Cierre temporal de industrias.\n");
-        printf("- Suspender actividades al aire libre.\n");
-    } else {
-        printf("- Niveles dentro de lo aceptable. Mantener monitoreo.\n");
-    }
+const char* obtener_categoria_ica(float pm25) {
+    if (pm25 <= 12.0) return "Buena";
+    if (pm25 <= 35.4) return "Moderada";
+    if (pm25 <= 55.4) return "Dañina a la salud para grupos sensibles";
+    if (pm25 <= 150.4) return "Dañina a la salud";
+    if (pm25 <= 250.4) return "Muy dañina a la salud";
+    return "Peligrosa";
 }
 
 void generar_reporte(Zona zonas[], int num_zonas) {
-    FILE *f = fopen("reporte.txt", "w");
+    FILE *f = fopen("reporte_integral.txt", "w");
     if (!f) {
         printf("No se pudo crear el reporte.\n");
         return;
     }
+
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    char buffer_fecha[50];
+    strftime(buffer_fecha, sizeof(buffer_fecha), "%a %b %d %H:%M:%S %Y", tm_info);
+
+    fprintf(f, "=== REPORTE INTEGRAL DE CONTAMINACIÓN DEL AIRE ===\n\n");
+    fprintf(f, "Fecha del reporte: %s\n", buffer_fecha);
+    fprintf(f, "Número de zonas monitoreadas: %d\n\n", num_zonas);
+
     for (int i = 0; i < num_zonas; i++) {
-        fprintf(f, "Zona: %s\n", zonas[i].nombre);
-        fprintf(f, "Fecha      | PM2.5 | PM10 | CO2  | SO2  | NO2  | Temp | Hum | V.Viento\n");
-        for (int j = 0; j < zonas[i].dias_registrados; j++) {
-            RegistroDia *r = &zonas[i].historial[j];
-            fprintf(f, "%-10s | %5.1f | %4.1f | %4.1f | %4.1f | %4.1f | %4.1f | %3.1f | %7.1f\n",
-                r->fecha, r->pm25, r->pm10, r->co2, r->so2, r->no2, r->temperatura, r->humedad, r->velocidad_viento);
+        Zona *z = &zonas[i];
+        fprintf(f, "--- ZONA %d: %s ---\n", i + 1, z->nombre);
+        fprintf(f, "Ubicacion: (%.4f, %.4f)\n", z->latitud, z->longitud);
+        fprintf(f, "Registros historicos: %d\n\n", z->dias_registrados);
+
+        if (z->dias_registrados > 0) {
+            RegistroDia *r_actual = &z->historial[z->dias_registrados - 1];
+            fprintf(f, "DATOS ACTUALES:\n");
+            fprintf(f, "PM2.5: %.2f ug/m3 (Limite: 25.00)\n", r_actual->pm25);
+            fprintf(f, "PM10:  %.2f ug/m3 (Limite: 50.00)\n", r_actual->pm10);
+            fprintf(f, "CO2:   %.2f ppm (Limite: 1000.00)\n", r_actual->co2);
+            fprintf(f, "SO2:   %.2f ug/m3 (Limite: 20.00)\n", r_actual->so2);
+            fprintf(f, "NO2:   %.2f ug/m3 (Limite: 40.00)\n\n", r_actual->no2);
+
+            fprintf(f, "CONDICIONES CLIMATICAS:\n");
+            fprintf(f, "Temperatura: %.1fC\n", r_actual->temperatura);
+            fprintf(f, "Humedad: %.1f%%\n", r_actual->humedad);
+            fprintf(f, "Viento: %.1f km/h\n\n", r_actual->velocidad_viento);
+
+            // Predicciones
+            fprintf(f, "PREDICCIONES 24H:\n");
+            if (z->dias_registrados >= 3) {
+                float sumas[5] = {0};
+                float pesos[3] = {0.6, 0.3, 0.1};
+                for (int j = 0; j < 3; j++) {
+                    RegistroDia *r_hist = &z->historial[z->dias_registrados - 1 - j];
+                    sumas[0] += r_hist->pm25 * pesos[j];
+                    sumas[1] += r_hist->pm10 * pesos[j];
+                    sumas[2] += r_hist->co2 * pesos[j];
+                    sumas[3] += r_hist->so2 * pesos[j];
+                    sumas[4] += r_hist->no2 * pesos[j];
+                }
+                fprintf(f, "PM2.5: %.2f ug/m3\n", sumas[0]);
+                fprintf(f, "PM10:  %.2f ug/m3\n", sumas[1]);
+                fprintf(f, "CO2:   %.2f ppm\n", sumas[2]);
+                fprintf(f, "SO2:   %.2f ug/m3\n", sumas[3]);
+                fprintf(f, "NO2:   %.2f ug/m3\n\n", sumas[4]);
+            } else {
+                fprintf(f, "No hay suficientes datos para predecir.\n\n");
+            }
+
+            // ICA
+            const char* categoria_ica = obtener_categoria_ica(r_actual->pm25);
+            fprintf(f, "INDICE DE CALIDAD DEL AIRE: %.2f (%s)\n\n", r_actual->pm25, categoria_ica);
+
+            // Promedios
+            fprintf(f, "PROMEDIOS HISTORICOS (%d dias):\n", z->dias_registrados);
+            float promedios[5] = {0};
+            for (int j = 0; j < z->dias_registrados; j++) {
+                promedios[0] += z->historial[j].pm25;
+                promedios[1] += z->historial[j].pm10;
+                promedios[2] += z->historial[j].co2;
+                promedios[3] += z->historial[j].so2;
+                promedios[4] += z->historial[j].no2;
+            }
+            fprintf(f, "PM2.5: %.2f ug/m3\n", promedios[0] / z->dias_registrados);
+            fprintf(f, "PM10:  %.2f ug/m3\n", promedios[1] / z->dias_registrados);
+            fprintf(f, "CO2:   %.2f ppm\n", promedios[2] / z->dias_registrados);
+            fprintf(f, "SO2:   %.2f ug/m3\n", promedios[3] / z->dias_registrados);
+            fprintf(f, "NO2:   %.2f ug/m3\n", promedios[4] / z->dias_registrados);
+
+        } else {
+            fprintf(f, "No hay datos registrados para esta zona.\n");
         }
-        fprintf(f, "\n");
+        fprintf(f, "\n==================================================\n\n");
     }
+
     fclose(f);
-    printf("Reporte generado en reporte.txt\n");
+    printf("Reporte integral generado en reporte_integral.txt\n");
 }
 
 void exportar_respaldo(Zona zonas[], int num_zonas) {
@@ -317,6 +401,10 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     printf("Nombre de la nueva zona: ");
     fgets(zonas[*num_zonas].nombre, NOMBRE_ZONA, stdin);
     zonas[*num_zonas].nombre[strcspn(zonas[*num_zonas].nombre, "\n")] = 0;
+    
+    leer_float("Latitud de la zona: ", -90, 90, &zonas[*num_zonas].latitud);
+    leer_float("Longitud de la zona: ", -180, 180, &zonas[*num_zonas].longitud);
+
     zonas[*num_zonas].dias_registrados = 0;
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
@@ -337,6 +425,19 @@ void editar_zona(Zona zonas[], int num_zonas) {
         buffer[strcspn(buffer, "\n")] = 0;
         strncpy(z->nombre, buffer, NOMBRE_ZONA);
     }
+
+    printf("Nueva latitud (actual: %.4f, deje vacio para no cambiar): ", z->latitud);
+    fgets(buffer, sizeof(buffer), stdin);
+    if (buffer[0] != '\n') {
+        leer_float("Latitud: ", -90, 90, &z->latitud);
+    }
+
+    printf("Nueva longitud (actual: %.4f, deje vacio para no cambiar): ", z->longitud);
+    fgets(buffer, sizeof(buffer), stdin);
+    if (buffer[0] != '\n') {
+        leer_float("Longitud: ", -180, 180, &z->longitud);
+    }
+
     guardar_zonas(zonas, num_zonas);
     printf("Zona editada correctamente.\n");
 }
