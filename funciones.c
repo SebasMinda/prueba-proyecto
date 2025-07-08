@@ -182,7 +182,16 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     nueva_zona->nombre[strcspn(nueva_zona->nombre, "\n")] = 0;
 
     int dias_a_generar;
-    if (!leer_int("\nCuantos dias de datos de ejemplo desea generar (1-7)?\n(Se recomiendan al menos 3 para que las predicciones funcionen): ", 1, 7, &dias_a_generar)) {
+    if (!leer_int("\nCuantos dias de datos de ejemplo desea registrar (1-7)?\n(Se recomiendan al menos 3 para que las predicciones funcionen): ", 1, 7, &dias_a_generar)) {
+        printf("Operacion cancelada.\n");
+        return;
+    }
+
+    int modo_ingreso;
+    printf("\nSeleccione el modo de ingreso de datos:\n");
+    printf("1. Generar datos automaticamente\n");
+    printf("2. Ingresar datos manualmente\n");
+    if (!leer_int("Opcion: ", 1, 2, &modo_ingreso)) {
         printf("Operacion cancelada.\n");
         return;
     }
@@ -191,26 +200,43 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     nueva_zona->dias_registrados = dias_a_generar;
     for (int i = 0; i < dias_a_generar; i++) {
         RegistroDia *r = &nueva_zona->historial[i];
-        // Usamos la fecha actual del sistema para generar fechas más realistas hacia atrás
-        time_t t = time(NULL);
-        struct tm *tm_info = localtime(&t);
-        tm_info->tm_mday -= (dias_a_generar - 1 - i); // Restamos días para ir hacia el pasado
-        mktime(tm_info); // Normalizamos la fecha
-        strftime(r->fecha, sizeof(r->fecha), "%Y-%m-%d", tm_info);
+        printf("\n--- Ingresando datos para el dia %d de %d ---\n", i + 1, dias_a_generar);
 
-        r->pm25 = 15.0f + (rand() % 200) / 10.0f;
-        r->pm10 = 25.0f + (rand() % 300) / 10.0f;
-        r->co2 = 400.0f + (rand() % 2000) / 10.0f;
-        r->so2 = 5.0f + (rand() % 150) / 10.0f;
-        r->no2 = 10.0f + (rand() % 300) / 10.0f;
-        r->temperatura = 10.0f + (rand() % 150) / 10.0f;
-        r->humedad = 50.0f + (rand() % 300) / 10.0f;
-        r->velocidad_viento = 5.0f + (rand() % 150) / 10.0f;
+        if (modo_ingreso == 1) { // Generación automática
+            // Usamos la fecha actual del sistema para generar fechas más realistas hacia atrás
+            time_t t = time(NULL);
+            struct tm *tm_info = localtime(&t);
+            tm_info->tm_mday -= (dias_a_generar - 1 - i); // Restamos días para ir hacia el pasado
+            mktime(tm_info); // Normalizamos la fecha
+            strftime(r->fecha, sizeof(r->fecha), "%Y-%m-%d", tm_info);
+
+            r->pm25 = 15.0f + (rand() % 200) / 10.0f;
+            r->pm10 = 25.0f + (rand() % 300) / 10.0f;
+            r->co2 = 400.0f + (rand() % 2000) / 10.0f;
+            r->so2 = 5.0f + (rand() % 150) / 10.0f;
+            r->no2 = 10.0f + (rand() % 300) / 10.0f;
+            r->temperatura = 10.0f + (rand() % 150) / 10.0f;
+            r->humedad = 50.0f + (rand() % 300) / 10.0f;
+            r->velocidad_viento = 5.0f + (rand() % 150) / 10.0f;
+            printf("Datos para fecha %s generados automaticamente.\n", r->fecha);
+        } else { // Ingreso manual
+            printf("Ingrese la fecha (YYYY-MM-DD): ");
+            fgets(r->fecha, sizeof(r->fecha), stdin);
+            r->fecha[strcspn(r->fecha, "\n")] = 0;
+            leer_float("PM2.5: ", 0, 99999, &r->pm25);
+            leer_float("PM10: ", 0, 99999, &r->pm10);
+            leer_float("CO2: ", 0, 99999, &r->co2);
+            leer_float("SO2: ", 0, 99999, &r->so2);
+            leer_float("NO2: ", 0, 99999, &r->no2);
+            leer_float("Temperatura (C): ", -50, 60, &r->temperatura);
+            leer_float("Humedad (%%): ", 0, 100, &r->humedad);
+            leer_float("Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
+        }
     }
 
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
-    printf("\nZona agregada correctamente con %d dias de datos de ejemplo.\n", dias_a_generar);
+    printf("\nZona agregada correctamente con %d dias de datos.\n", dias_a_generar);
     if (dias_a_generar >= 3) {
         printf("Ya puede utilizar la funcion de prediccion para esta zona.\n");
     }
