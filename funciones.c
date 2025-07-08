@@ -8,7 +8,8 @@
 #define ARCHIVO_DATOS "datos_zonas.txt"
 #define ARCHIVO_RESPALDO "respaldo_zonas.txt"
 
-// Carga los datos desde un archivo de texto
+// Carga los datos de las zonas desde el archivo de texto.
+// Si se borra o modifica, el programa no podrá leer los datos guardados y podría empezar vacío o con errores.
 int cargar_zonas(Zona zonas[], int *num_zonas) {
     FILE *f = fopen(ARCHIVO_DATOS, "r");
     if (!f) return 0;
@@ -35,12 +36,15 @@ int cargar_zonas(Zona zonas[], int *num_zonas) {
                 return 0;
             }
         }
+        // Ordena el historial de la zona recién cargada para asegurar el orden cronológico.
+        qsort(zonas[i].historial, zonas[i].dias_registrados, sizeof(RegistroDia), comparar_fechas);
     }
     fclose(f);
     return 1;
 }
 
-// Guarda los datos en un archivo de texto
+// Guarda los datos de las zonas en el archivo de texto.
+// Si se borra o modifica, los cambios hechos durante la sesión no se guardarán al salir.
 int guardar_zonas(Zona zonas[], int num_zonas) {
     FILE *f = fopen(ARCHIVO_DATOS, "w");
     if (!f) return 0;
@@ -65,6 +69,8 @@ int comparar_fechas(const void *a, const void *b) {
     return strcmp(regA->fecha, regB->fecha);
 }
 
+// Muestra el menú principal de opciones.
+// Si se borra o modifica, el usuario no verá las opciones para interactuar con el programa.
 void mostrar_menu() {
     printf("\n============================================================\n");
     printf("    SISTEMA INTEGRAL DE GESTION DE CONTAMINACION DEL AIRE\n");
@@ -90,15 +96,21 @@ void mostrar_menu() {
     printf("Seleccione una opcion: ");
 }
 
+// Limpia el buffer de entrada para evitar errores en la lectura de datos.
+// Es una función de ayuda muy importante. Si se borra, la lectura de datos puede volverse impredecible.
 void limpiar_buffer() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
+// Valida que un número flotante esté dentro de un rango (min-max).
+// Es una función de ayuda. Si se borra, las funciones que leen datos podrían aceptar valores inválidos.
 int validar_float(float valor, float min, float max) {
     return valor >= min && valor <= max;
 }
 
+// Lee de forma segura un número flotante desde el teclado.
+// Es una función de ayuda crítica. Si se borra, la entrada de datos numéricos fallará.
 int leer_float(const char *mensaje, float min, float max, float *valor) {
     char buffer[50];
     char *endptr;
@@ -122,6 +134,8 @@ int leer_float(const char *mensaje, float min, float max, float *valor) {
     return 1;
 }
 
+// Lee de forma segura un número entero desde el teclado.
+// Es una función de ayuda crítica. Si se borra, la selección de menús y otras entradas fallarán.
 int leer_int(const char *mensaje, int min, int max, int *valor) {
     char buffer[50];
     char *endptr;
@@ -145,6 +159,8 @@ int leer_int(const char *mensaje, int min, int max, int *valor) {
     return 1;
 }
 
+// Permite ingresar un nuevo registro de datos para una zona específica.
+// Si se borra, no se podrán añadir nuevos datos de monitoreo al sistema.
 void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
     int op;
     printf("\nSeleccione la zona para ingresar datos:\n");
@@ -159,9 +175,12 @@ void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
         z->dias_registrados--;
     }
     RegistroDia *r = &z->historial[z->dias_registrados];
-    printf("Ingrese la fecha (YYYY-MM-DD): ");
-    fgets(r->fecha, sizeof(r->fecha), stdin);
-    r->fecha[strcspn(r->fecha, "\n")] = 0;
+
+    if (!leer_fecha("Ingrese la fecha del nuevo registro:", r->fecha)) {
+        printf("Operacion cancelada.\n");
+        return;
+    }
+
     leer_float("PM2.5: ", 0, 99999, &r->pm25);
     leer_float("PM10: ", 0, 99999, &r->pm10);
     leer_float("CO2: ", 0, 99999, &r->co2);
@@ -171,10 +190,16 @@ void ingresar_datos_actuales(Zona zonas[], int num_zonas) {
     leer_float("Humedad (%%): ", 0, 100, &r->humedad);
     leer_float("Velocidad viento (km/h): ", 0, 500, &r->velocidad_viento);
     z->dias_registrados++;
+
+    // Reordena el historial después de añadir el nuevo dato.
+    qsort(z->historial, z->dias_registrados, sizeof(RegistroDia), comparar_fechas);
+
     guardar_zonas(zonas, num_zonas);
-    printf("Datos ingresados correctamente.\n");
+    printf("Datos ingresados y ordenados correctamente.\n");
 }
 
+// Añade una nueva zona de monitoreo al sistema.
+// Si se borra, no se podrán agregar más zonas al sistema.
 void anadir_zona(Zona zonas[], int *num_zonas) {
     if (*num_zonas >= MAX_ZONAS) {
         printf("No se pueden agregar mas zonas.\n");
@@ -226,9 +251,12 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
             r->velocidad_viento = 5.0f + (rand() % 150) / 10.0f;
             printf("Datos para fecha %s generados automaticamente.\n", r->fecha);
         } else { // Ingreso manual
-            printf("Ingrese la fecha (YYYY-MM-DD): ");
-            fgets(r->fecha, sizeof(r->fecha), stdin);
-            r->fecha[strcspn(r->fecha, "\n")] = 0;
+            if (!leer_fecha("Ingrese la fecha (YYYY-MM-DD):", r->fecha)) {
+                printf("Operacion cancelada.\n");
+                // Si se cancela, es mejor detener la creación de la zona
+                *num_zonas = (*num_zonas > 0) ? *num_zonas -1 : 0; // Temporalmente se deshace
+                return;
+            }
             leer_float("PM2.5: ", 0, 99999, &r->pm25);
             leer_float("PM10: ", 0, 99999, &r->pm10);
             leer_float("CO2: ", 0, 99999, &r->co2);
@@ -240,6 +268,9 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
         }
     }
 
+    // Ordena los datos iniciales de la nueva zona.
+    qsort(nueva_zona->historial, nueva_zona->dias_registrados, sizeof(RegistroDia), comparar_fechas);
+
     (*num_zonas)++;
     guardar_zonas(zonas, *num_zonas);
     printf("\nZona agregada correctamente con %d dias de datos.\n", dias_a_generar);
@@ -248,6 +279,8 @@ void anadir_zona(Zona zonas[], int *num_zonas) {
     }
 }
 
+// Permite editar el nombre o los registros de una zona existente.
+// Si se borra, no se podrán corregir errores en los datos ya ingresados.
 void editar_zona(Zona zonas[], int num_zonas) {
     int op_zona;
     printf("\nSeleccione la zona a editar:\n");
@@ -319,18 +352,18 @@ void editar_zona(Zona zonas[], int num_zonas) {
                 char fecha_anterior[11];
                 strcpy(fecha_anterior, r->fecha);
 
-                printf("Ingrese la nueva fecha (YYYY-MM-DD): ");
-                fgets(r->fecha, sizeof(r->fecha), stdin);
-                r->fecha[strcspn(r->fecha, "\n")] = 0;
-                if (strlen(r->fecha) > 0) {
-                    printf("Fecha del registro actualizada de %s a %s.\n", fecha_anterior, r->fecha);
-                    qsort(z->historial, z->dias_registrados, sizeof(RegistroDia), comparar_fechas);
-                    printf("El historial de la zona ha sido reordenado cronologicamente.\n");
-                } else {
-                    // Si el usuario no ingresa nada, restauramos la fecha original
-                    strcpy(r->fecha, fecha_anterior);
-                    printf("No se ingreso nueva fecha. La fecha no ha cambiado.\n");
+                char nueva_fecha[11];
+                if (!leer_fecha("Ingrese la nueva fecha:", nueva_fecha)) {
+                    printf("Operacion cancelada.\n");
+                    break;
                 }
+
+                strcpy(r->fecha, nueva_fecha);
+                printf("Fecha del registro actualizada de %s a %s.\n", fecha_anterior, r->fecha);
+                
+                // Ordenar el historial por fecha para mantener la consistencia cronológica
+                qsort(z->historial, z->dias_registrados, sizeof(RegistroDia), comparar_fechas);
+                printf("El historial de la zona ha sido reordenado cronologicamente.\n");
                 break;
             }
         }
@@ -339,6 +372,8 @@ void editar_zona(Zona zonas[], int num_zonas) {
     printf("Cambios guardados.\n");
 }
 
+// Muestra una tabla con el estado actual (último registro) de todas las zonas.
+// Si se borra, se pierde la capacidad de ver un resumen rápido del estado general.
 void mostrar_estado_actual(Zona zonas[], int num_zonas) {
     printf("\nESTADO ACTUAL DE LAS ZONAS (ULTIMOS 7 DIAS):\n");
     for (int i = 0; i < num_zonas; i++) {
@@ -358,6 +393,8 @@ void mostrar_estado_actual(Zona zonas[], int num_zonas) {
     }
 }
 
+// Calcula y muestra una predicción a 24 horas basada en los últimos días.
+// Si se borra o modifica, se pierde la funcionalidad de predicción del sistema.
 void mostrar_predicciones(Zona zonas[], int num_zonas) {
     printf("\nPREDICCIONES PARA LAS PROXIMAS 24 HORAS:\n");
     for (int i = 0; i < num_zonas; i++) {
@@ -387,6 +424,8 @@ void mostrar_predicciones(Zona zonas[], int num_zonas) {
     }
 }
 
+// Muestra el historial completo de una zona seleccionada.
+// Si se borra, el usuario no podrá consultar los datos históricos de una zona en particular.
 void mostrar_info_zonas(Zona zonas[], int num_zonas) {
     if (num_zonas == 0) {
         printf("\nNo hay zonas registradas para mostrar.\n");
@@ -417,6 +456,8 @@ void mostrar_info_zonas(Zona zonas[], int num_zonas) {
     }
 }
 
+// Evalúa los datos y genera alertas si se superan los límites, con recomendaciones.
+// Si se borra o modifica, el sistema pierde su capacidad de alertar sobre niveles peligrosos.
 void generar_alertas_y_recomendaciones(Zona zonas[], int num_zonas) {
     printf("\nALERTAS Y RECOMENDACIONES DEL SISTEMA:\n");
     int alertas_generadas = 0;
@@ -483,6 +524,8 @@ const char* obtener_categoria_ica(float pm25) {
     return "Peligrosa";
 }
 
+// Crea un archivo de texto "reporte_integral.txt" con toda la información detallada.
+// Si se borra, no se podrán generar reportes en formato de texto.
 void generar_reporte(Zona zonas[], int num_zonas) {
     FILE *f = fopen("reporte_integral.txt", "w");
     if (!f) {
@@ -567,6 +610,8 @@ void generar_reporte(Zona zonas[], int num_zonas) {
     printf("Reporte integral generado en reporte_integral.txt\n");
 }
 
+// Crea una copia de seguridad binaria de los datos.
+// Si se borra, no se podrán crear respaldos de seguridad.
 void exportar_respaldo(Zona zonas[], int num_zonas) {
     FILE *f = fopen(ARCHIVO_RESPALDO, "wb");
     if (!f) {
@@ -579,6 +624,8 @@ void exportar_respaldo(Zona zonas[], int num_zonas) {
     printf("Respaldo exportado en %s\n", ARCHIVO_RESPALDO);
 }
 
+// Elimina una zona de monitoreo del sistema.
+// Si se borra, no se podrán quitar zonas que ya no se necesiten.
 void eliminar_zona(Zona zonas[], int *num_zonas) {
     int op;
     printf("\nSeleccione la zona a eliminar:\n");
@@ -592,7 +639,24 @@ void eliminar_zona(Zona zonas[], int *num_zonas) {
     printf("Zona eliminada correctamente.\n");
 }
 
+// Borra el archivo de datos para reiniciar el programa desde cero.
+// Si se borra, se pierde la funcionalidad de reseteo rápido.
 void reiniciar_programa() {
     remove(ARCHIVO_DATOS);
     printf("Todos los datos han sido eliminados.\n");
+}
+
+// Lee y valida una fecha (día, mes, año) de forma numérica y la formatea a YYYY-MM-DD.
+// Si se borra, se pierde la capacidad de ingresar fechas de forma validada y segura.
+int leer_fecha(const char *mensaje, char *fecha_str) {
+    int dia, mes, anio;
+    printf("%s\n", mensaje);
+    if (!leer_int("Año (ej. 2024): ", 2000, 2050, &anio)) return 0;
+    if (!leer_int("Mes (1-12): ", 1, 12, &mes)) return 0;
+    // Validación simple de día, no considera meses de 30/28/29 días
+    if (!leer_int("Día (1-31): ", 1, 31, &dia)) return 0;
+
+    // Formatea la fecha en la cadena de salida
+    sprintf(fecha_str, "%04d-%02d-%02d", anio, mes, dia);
+    return 1;
 }
